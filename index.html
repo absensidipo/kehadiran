@@ -776,7 +776,7 @@
                 const userId = document.getElementById('login-account-select').value;
                 const foundUser = userAccounts.find(u => u.id == userId);
                 if (!foundUser) {
-                    alert('Silakan pilih akun yang valid!');
+                    alert('Silakan pilih akun yang valid (atau login sebagai Admin untuk membuat akun terlebih dahulu)!');
                     return;
                 }
                 currentUser = { role: foundUser.role, name: foundUser.name, classTarget: foundUser.classTarget || '' };
@@ -799,6 +799,7 @@
             updateSessionUI();
             renderStudentTable();
             renderAttendanceTable();
+            renderRekapTable();
             updateStats();
             document.getElementById('login-password').value = '';
         }
@@ -1397,7 +1398,14 @@
             }
 
             if (displayStudents.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400">Belum ada data siswa. Klik "+ Tambah Siswa" untuk menambahkan.</td></tr>`;
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-folder-open text-4xl mb-2 text-slate-300"></i>
+                            <p class="font-medium text-sm text-slate-500">Belum ada data siswa.</p>
+                            <p class="text-xs text-slate-400 mt-1">Klik <b>"+ Tambah Siswa"</b> di atas untuk menambahkan siswa baru.</p>
+                        </td>
+                    </tr>`;
                 return;
             }
 
@@ -1421,10 +1429,6 @@
         }
 
         function openAddModal() {
-            if (classes.length === 0) {
-                alert('Silakan tambahkan Master Kelas terlebih dahulu melalui menu Admin!');
-                return;
-            }
             renderClassSelectOptions();
             document.getElementById('modal-add-student').classList.remove('hidden');
             document.getElementById('modal-add-student').classList.add('flex');
