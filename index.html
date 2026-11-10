@@ -358,15 +358,16 @@
             <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Peran / Akses</label>
-                    <select id="login-role-select" onchange="onLoginRoleChange(this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <select id="login-role-select-modal" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                         <option value="petugas">Petugas Piket / Guru Jaga</option>
                         <option value="walikelas">Wali Kelas</option>
                         <option value="admin">Admin Utama</option>
                     </select>
                 </div>
+            </form>
+        </div>
+    </div>
 
-                <!-- Dropdown Akun (Untuk Petugas / Wali Kelas) -->
-                <div id="login-account-container">
     <!-- Modal QR Code / ID Card View & Download -->
     <div id="modal-qr" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center relative border border-slate-100 flex flex-col items-center">
@@ -1472,15 +1473,24 @@
             const cardElement = document.getElementById('id-card-element');
             const studentName = document.getElementById('qr-modal-name').innerText || 'Siswa';
             
+            if (!cardElement) return;
+
+            // Menggunakan html2canvas untuk mengonversi elemen kartu ke gambar PNG
             html2canvas(cardElement, {
-                scale: 3, // High quality render
+                scale: 3, // Kualitas render HD
                 useCORS: true,
                 backgroundColor: '#ffffff'
             }).then(canvas => {
+                const imageURI = canvas.toDataURL('image/png');
                 const link = document.createElement('a');
                 link.download = `Kartu_Absensi_${studentName.replace(/\s+/g, '_')}.png`;
-                link.href = canvas.toDataURL('image/png');
+                link.href = imageURI;
+                document.body.appendChild(link);
                 link.click();
+                document.body.removeChild(link);
+            }).catch(err => {
+                console.error("Gagal mengunduh kartu:", err);
+                alert("Gagal memproses unduhan kartu.");
             });
         }
 
