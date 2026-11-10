@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- HTML5-QRCode Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- QRCode Generator Library (Local Canvas - No CORS issue) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- html2canvas for ID Card Generation & Download -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Google Fonts -->
@@ -319,7 +321,7 @@
                 <div id="tab-siswa" class="p-4 hidden">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-bold text-slate-700">Daftar Master Siswa</h3>
-                        <button onclick="openAddModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-1 shadow-sm">
+                        <button type="button" onclick="openAddModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition flex items-center gap-1 shadow-sm cursor-pointer">
                             <i class="fa-solid fa-user-plus"></i> + Tambah Siswa
                         </button>
                     </div>
@@ -344,14 +346,14 @@
         </section>
     </main>
 
-    <!-- Modal Login Pengguna (Terpisah, Tidak Otomatis Pop-up Saat Buka) -->
+    <!-- Modal Login Pengguna -->
     <div id="modal-login" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative border border-slate-100">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-right-to-bracket text-emerald-600"></i> Login Pengguna
                 </h3>
-                <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600">
+                <button type="button" onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -368,14 +370,14 @@
         </div>
     </div>
 
-    <!-- Modal QR Code / ID Card View & Download -->
+    <!-- Modal ID Card View & Download -->
     <div id="modal-qr" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center relative border border-slate-100 flex flex-col items-center">
             <div class="w-full flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
                 <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                     <i class="fa-solid fa-address-card text-emerald-600"></i> Kartu Presensi Siswa
                 </h3>
-                <button onclick="closeQRModal()" class="text-slate-400 hover:text-slate-600">
+                <button type="button" onclick="closeQRModal()" class="text-slate-400 hover:text-slate-600">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -421,9 +423,9 @@
                         </div>
                     </div>
 
-                    <!-- Right: QR Code -->
-                    <div class="bg-white p-1.5 rounded-lg border border-slate-300 shadow-sm flex-shrink-0">
-                        <img id="qr-modal-img" src="" alt="QR Code Siswa" class="w-24 h-24 object-contain">
+                    <!-- Right: QR Code Container (Generated client-side) -->
+                    <div class="bg-white p-1 rounded-lg border border-slate-300 shadow-sm flex-shrink-0">
+                        <div id="qr-code-canvas-box" class="w-20 h-20 flex items-center justify-center"></div>
                     </div>
                 </div>
 
@@ -436,8 +438,8 @@
 
             <!-- ACTION BUTTONS -->
             <div class="flex gap-2 justify-center w-full mt-5">
-                <button onclick="closeQRModal()" class="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Tutup</button>
-                <button onclick="downloadIDCardImage()" class="w-1/2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5">
+                <button type="button" onclick="closeQRModal()" class="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Tutup</button>
+                <button type="button" onclick="downloadIDCardImage()" class="w-1/2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-download"></i> Unduh Kartu
                 </button>
             </div>
@@ -589,7 +591,7 @@
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-user-plus text-emerald-600"></i> Tambah Siswa Baru
                 </h3>
-                <button onclick="closeAddModal()" class="text-slate-400 hover:text-slate-600">
+                <button type="button" onclick="closeAddModal()" class="text-slate-400 hover:text-slate-600">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -613,22 +615,6 @@
                     <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow">Simpan Siswa</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- Modal QR Code View/Print -->
-    <div id="modal-qr" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-xs w-full p-6 shadow-2xl text-center relative border border-slate-100">
-            <h3 id="qr-modal-name" class="font-bold text-slate-800 text-base"></h3>
-            <p id="qr-modal-nisn" class="text-xs text-slate-500 mb-4"></p>
-            
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 inline-block mb-4">
-                <img id="qr-modal-img" src="" alt="QR Code" class="w-48 h-48 mx-auto">
-            </div>
-
-            <div class="flex gap-2 justify-center">
-                <button onclick="closeQRModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">Tutup</button>
-            </div>
         </div>
     </div>
 
@@ -1386,24 +1372,23 @@
             if (!tbody) return;
             
             let displayStudents = students;
-            if (currentUser.role === 'walikelas' && currentUser.classTarget) {
+            if (currentUser && currentUser.role === 'walikelas' && currentUser.classTarget) {
                 displayStudents = students.filter(s => s.class === currentUser.classTarget);
             }
 
             if (displayStudents.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">Belum ada siswa terdaftar.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">Belum ada siswa terdaftar. Tambahkan kelas terlebih dahulu, lalu buat data siswa.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = displayStudents.map(s => {
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(s.nisn)}`;
                 return `
                     <tr class="hover:bg-slate-50 transition">
                         <td class="py-3 px-4 font-mono font-semibold text-slate-700">${s.nisn}</td>
                         <td class="py-3 px-4 font-medium">${s.name}</td>
                         <td class="py-3 px-4">${s.class}</td>
                         <td class="py-3 px-4 text-center">
-                            <button onclick="showQRCode('${s.name}', '${s.nisn}', '${s.class}', '${qrUrl}')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs hover:bg-emerald-100 font-semibold transition inline-flex items-center gap-1">
+                            <button onclick="showQRCode('${s.name}', '${s.nisn}', '${s.class}')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs hover:bg-emerald-100 font-semibold transition inline-flex items-center gap-1 cursor-pointer">
                                 <i class="fa-solid fa-id-card"></i> Unduh Kartu
                             </button>
                         </td>
@@ -1418,6 +1403,10 @@
         }
 
         function openAddModal() {
+            if (classes.length === 0) {
+                alert('Belum ada Master Kelas terdaftar! Silakan login sebagai Admin dan buat kelas terlebih dahulu di menu "Kelola Master Kelas".');
+                return;
+            }
             renderClassSelectOptions();
             document.getElementById('modal-add-student').classList.remove('hidden');
             document.getElementById('modal-add-student').classList.add('flex');
@@ -1433,6 +1422,11 @@
             const nisn = document.getElementById('new-nisn').value.trim();
             const nama = document.getElementById('new-nama').value.trim();
             const kelas = document.getElementById('new-kelas').value;
+
+            if (!kelas) {
+                alert('Silakan buat kelas terlebih dahulu di menu Admin!');
+                return;
+            }
 
             if (students.some(s => s.nisn === nisn)) {
                 alert('NISN sudah terdaftar!');
@@ -1460,11 +1454,26 @@
             }
         }
 
-        function showQRCode(name, nisn, kelas, qrUrl) {
+        let qrGeneratorInstance = null;
+
+        function showQRCode(name, nisn, kelas) {
             document.getElementById('qr-modal-name').innerText = name;
             document.getElementById('qr-modal-nisn').innerText = nisn;
             document.getElementById('qr-modal-kelas').innerText = kelas;
-            document.getElementById('qr-modal-img').src = qrUrl;
+            
+            const qrBox = document.getElementById('qr-code-canvas-box');
+            qrBox.innerHTML = '';
+            
+            // Generate QR Code secara lokal menggunakan QRCode.js (Mencegah masalah CORS saat di-download)
+            new QRCode(qrBox, {
+                text: nisn,
+                width: 80,
+                height: 80,
+                colorDark : "#064e3b",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
             document.getElementById('modal-qr').classList.remove('hidden');
             document.getElementById('modal-qr').classList.add('flex');
         }
@@ -1477,7 +1486,7 @@
 
             // Menggunakan html2canvas untuk mengonversi elemen kartu ke gambar PNG
             html2canvas(cardElement, {
-                scale: 3, // Kualitas render HD
+                scale: 3, // HD quality
                 useCORS: true,
                 backgroundColor: '#ffffff'
             }).then(canvas => {
