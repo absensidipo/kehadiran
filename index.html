@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- HTML5-QRCode Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- html2canvas for ID Card Generation & Download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -328,7 +330,7 @@
                                     <th class="py-3 px-4">NISN</th>
                                     <th class="py-3 px-4">Nama Siswa</th>
                                     <th class="py-3 px-4">Kelas</th>
-                                    <th class="py-3 px-4 text-center">Kartu QR</th>
+                                    <th class="py-3 px-4 text-center">Kartu ID</th>
                                     <th class="py-3 px-4 text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -365,78 +367,78 @@
 
                 <!-- Dropdown Akun (Untuk Petugas / Wali Kelas) -->
                 <div id="login-account-container">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Akun Anda</label>
-                    <select id="login-account-select" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                        <!-- Populated dynamically -->
-                    </select>
-                </div>
-
-                <!-- PIN / Password Admin Field -->
-                <div id="login-password-container" class="hidden">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Password Admin</label>
-                    <input type="password" id="login-password" placeholder="Password (default: admin123)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                </div>
-
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeLoginModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow">Masuk (Login)</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal Kelola Akun Pengguna (Admin Only) -->
-    <div id="modal-user-mgmt" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative border border-slate-100">
-            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-users-gear text-emerald-600"></i> Kelola Akun Petugas & Wali Kelas
-            </h3>
-            
-            <!-- Form Tambah Akun -->
-            <form onsubmit="addNewUserAccount(event)" class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3 mb-4">
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Peran</label>
-                        <select id="new-user-role" onchange="toggleWaliKelasField(this.value)" class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                            <option value="petugas">Petugas Piket</option>
-                            <option value="walikelas">Wali Kelas</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Nama Lengkap</label>
-                        <input type="text" id="new-user-name" placeholder="Nama Guru / Petugas" required class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                    </div>
-                </div>
-                <div id="new-user-wali-container" class="hidden">
-                    <label class="block text-[11px] font-semibold text-slate-500 mb-1">Kelas yang Diampu</label>
-                    <select id="new-user-kelas" class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                        <!-- Populated dynamically -->
-                    </select>
-                </div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
-                    + Buat Akun Pengguna
+    <!-- Modal QR Code / ID Card View & Download -->
+    <div id="modal-qr" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center relative border border-slate-100 flex flex-col items-center">
+            <div class="w-full flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                    <i class="fa-solid fa-address-card text-emerald-600"></i> Kartu Presensi Siswa
+                </h3>
+                <button onclick="closeQRModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
-            </form>
+            </div>
+            
+            <!-- PRINTER-FRIENDLY ID CARD TEMPLATE (CR80 RATIO) -->
+            <div id="id-card-element" class="w-[320px] bg-white rounded-xl shadow-md border-2 border-slate-800 p-4 text-slate-800 text-left flex flex-col justify-between relative overflow-hidden bg-gradient-to-b from-emerald-50/40 to-white">
+                
+                <!-- ID CARD KOP HEADER -->
+                <div class="border-b-2 border-slate-800 pb-2 mb-2 text-center">
+                    <div class="flex items-center justify-center gap-2 mb-1">
+                        <div class="w-7 h-7 bg-emerald-700 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                        <h4 class="font-bold text-xs tracking-tight text-emerald-800 leading-tight">SMP PANGERAN DIPONEGORO</h4>
+                    </div>
+                    <p class="text-[8px] text-slate-600 leading-tight px-1 font-medium">
+                        Jl. Kebumen-Banjarnegara KM 25, Giritirto, Karanggayam, Kebumen
+                    </p>
+                </div>
 
-            <!-- Tabel Daftar Akun -->
-            <div class="max-h-56 overflow-y-auto border border-slate-100 rounded-lg">
-                <table class="w-full text-left text-xs text-slate-600">
-                    <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                        <tr>
-                            <th class="py-2 px-3">Nama</th>
-                            <th class="py-2 px-3">Peran</th>
-                            <th class="py-2 px-3">Kelas Ampu</th>
-                            <th class="py-2 px-3 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="users-table-body" class="divide-y divide-slate-100">
-                        <!-- User accounts list -->
-                    </tbody>
-                </table>
+                <!-- SUB-HEADER TITLE -->
+                <div class="text-center my-1">
+                    <span class="inline-block px-3 py-0.5 bg-emerald-700 text-white font-bold text-[10px] rounded-full uppercase tracking-wider">
+                        Kartu Absensi Siswa
+                    </span>
+                </div>
+
+                <!-- STUDENT DATA & QR CODE BODY -->
+                <div class="flex items-center justify-between gap-3 my-2 pt-1">
+                    <!-- Left: Details -->
+                    <div class="flex-grow text-[11px] space-y-1.5 font-medium">
+                        <div>
+                            <span class="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Nama Siswa</span>
+                            <span id="qr-modal-name" class="font-bold text-slate-900 leading-tight block text-xs"></span>
+                        </div>
+                        <div>
+                            <span class="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">NISN</span>
+                            <span id="qr-modal-nisn" class="font-mono font-bold text-emerald-700 leading-tight block"></span>
+                        </div>
+                        <div>
+                            <span class="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Kelas</span>
+                            <span id="qr-modal-kelas" class="font-semibold text-slate-800 leading-tight block"></span>
+                        </div>
+                    </div>
+
+                    <!-- Right: QR Code -->
+                    <div class="bg-white p-1.5 rounded-lg border border-slate-300 shadow-sm flex-shrink-0">
+                        <img id="qr-modal-img" src="" alt="QR Code Siswa" class="w-24 h-24 object-contain">
+                    </div>
+                </div>
+
+                <!-- ID CARD FOOTER -->
+                <div class="mt-2 pt-1.5 border-t border-slate-200 text-[8px] text-slate-400 flex justify-between items-center">
+                    <span>*Tunjukkan kartu saat absensi</span>
+                    <span class="font-mono text-[7px] text-slate-400">SMP-DIPONEGORO</span>
+                </div>
             </div>
 
-            <div class="flex justify-end pt-4">
-                <button type="button" onclick="closeUserMgmtModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs hover:bg-slate-200 font-medium">Tutup</button>
+            <!-- ACTION BUTTONS -->
+            <div class="flex gap-2 justify-center w-full mt-5">
+                <button onclick="closeQRModal()" class="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Tutup</button>
+                <button onclick="downloadIDCardImage()" class="w-1/2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-download"></i> Unduh Kartu
+                </button>
             </div>
         </div>
     </div>
@@ -1327,15 +1329,15 @@
             }
 
             tbody.innerHTML = displayStudents.map(s => {
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(s.nisn)}`;
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(s.nisn)}`;
                 return `
                     <tr class="hover:bg-slate-50 transition">
                         <td class="py-3 px-4 font-mono font-semibold text-slate-700">${s.nisn}</td>
                         <td class="py-3 px-4 font-medium">${s.name}</td>
                         <td class="py-3 px-4">${s.class}</td>
                         <td class="py-3 px-4 text-center">
-                            <button onclick="showQRCode('${s.name}', '${s.nisn}', '${qrUrl}')" class="text-xs text-emerald-600 hover:text-emerald-800 font-medium underline">
-                                Lihat QR
+                            <button onclick="showQRCode('${s.name}', '${s.nisn}', '${s.class}', '${qrUrl}')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs hover:bg-emerald-100 font-semibold transition inline-flex items-center gap-1">
+                                <i class="fa-solid fa-id-card"></i> Unduh Kartu
                             </button>
                         </td>
                         <td class="py-3 px-4 text-center">
@@ -1373,29 +1375,47 @@
             students.push({ nisn, name: nama, class: kelas });
             localStorage.setItem('smp_students', JSON.stringify(students));
             
-            renderStudentTable();
-            updateStats();
-            closeAddModal();
-
             document.getElementById('new-nisn').value = '';
             document.getElementById('new-nama').value = '';
+            closeAddModal();
+            renderStudentTable();
+            renderRekapTable();
+            updateStats();
         }
 
         function deleteStudent(nisn) {
-            if (confirm(`Hapus data siswa dengan NISN ${nisn}?`)) {
+            if (confirm(`Apakah Anda yakin ingin menghapus siswa dengan NISN ${nisn}?`)) {
                 students = students.filter(s => s.nisn !== nisn);
                 localStorage.setItem('smp_students', JSON.stringify(students));
                 renderStudentTable();
+                renderRekapTable();
                 updateStats();
             }
         }
 
-        function showQRCode(name, nisn, qrUrl) {
+        function showQRCode(name, nisn, kelas, qrUrl) {
             document.getElementById('qr-modal-name').innerText = name;
-            document.getElementById('qr-modal-nisn').innerText = `NISN: ${nisn}`;
+            document.getElementById('qr-modal-nisn').innerText = nisn;
+            document.getElementById('qr-modal-kelas').innerText = kelas;
             document.getElementById('qr-modal-img').src = qrUrl;
             document.getElementById('modal-qr').classList.remove('hidden');
             document.getElementById('modal-qr').classList.add('flex');
+        }
+
+        function downloadIDCardImage() {
+            const cardElement = document.getElementById('id-card-element');
+            const studentName = document.getElementById('qr-modal-name').innerText || 'Siswa';
+            
+            html2canvas(cardElement, {
+                scale: 3, // High quality render
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Kartu_Absensi_${studentName.replace(/\s+/g, '_')}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
         }
 
         function closeQRModal() {
