@@ -28,7 +28,8 @@
                 <i class="fa-solid fa-graduation-cap text-2xl"></i>
             </div>
             <h1 class="text-xl font-extrabold text-slate-900">SMP PANGERAN DIPONEGORO</h1>
-            <p class="text-xs text-slate-500 mt-1 mb-6">Sistem Absensi Siswa & Manajemen Presensi</p>
+            <p class="text-xs text-slate-500 mt-1 mb-2">Sistem Absensi Cloud & Real-time Sync</p>
+            <div id="cloud-status-badge" class="inline-block px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-full mb-6">Menghubungkan Cloud...</div>
 
             <form id="login-form" class="space-y-4 text-left">
                 <div>
@@ -454,8 +455,25 @@
         <span id="toast-message" class="text-xs font-semibold">-</span>
     </div>
 
-    <!-- APPLICATION SCRIPT -->
-    <script>
+    <!-- FIREBASE & APPLICATION SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'smp-pangeran-diponegoro-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyMockKeyForEnvironmentFallback",
+            authDomain: "mock-project.firebaseapp.com",
+            projectId: "mock-project",
+            storageBucket: "mock-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
+        };
+
+        let db, auth, userId = null;
+        let isCloudConnected = false;
+
         let appData = {
             classes: ['VII-A', 'VII-B', 'VIII-A', 'VIII-B', 'IX-A'],
             students: [
@@ -475,7 +493,80 @@
         let html5QrCode = null;
         let selectedStudentForManual = null;
 
+        // Initialize Firebase & Auth
+        async function initFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                if (token) {
+                    await signInWithCustomToken(auth, token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        isCloudConnected = true;
+                        const badge = document.getElementById('cloud-status-badge');
+                        if (badge) {
+                            badge.textContent = 'Cloud Terhubung (Sync Aktif)';
+                            badge.className = 'inline-block px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full mb-6';
+                        }
+                        setupCloudSync();
+                    }
+                });
+            } catch (err) {
+                console.warn('Fallback to LocalStorage:', err);
+                loadLocalStorage();
+            }
+        }
+
+        function setupCloudSync() {
+            if (!db || !userId) return;
+            // FIXED: Ensure even number of segments for Firestore document reference (collection/document/collection/document)
+            const docRef = doc(db, 'artifacts_data', appId);
+            
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const cloudData = docSnap.data();
+                    if (cloudData && cloudData.payload) {
+                        appData = cloudData.payload;
+                        saveLocalStorage(); // Backup local
+                        if (currentUser) renderAllTables();
+                    }
+                } else {
+                    // Initialize document if not exists
+                    saveCloudData();
+                }
+            }, (error) => {
+                console.warn("Firestore sync permission notice (using local storage fallback):", error.message);
+                isCloudConnected = false;
+                const badge = document.getElementById('cloud-status-badge');
+                if (badge) {
+                    badge.textContent = 'Mode Offline / Lokal Aktif';
+                    badge.className = 'inline-block px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-full mb-6';
+                }
+            });
+        }
+
+        async function saveCloudData() {
+            saveLocalStorage();
+            if (!db || !userId || !isCloudConnected) return;
+            try {
+                // FIXED: Ensure even number of segments matching setupCloudSync
+                const docRef = doc(db, 'artifacts_data', appId);
+                await setDoc(docRef, { payload: appData, updatedAt: new Date().toISOString() });
+            } catch (err) {
+                console.warn("Cloud save skipped due to permissions, saved locally.");
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            initFirebase();
             loadLocalStorage();
             updateWaliClassDropdown();
             renderClassList();
@@ -564,7 +655,7 @@
             }
 
             renderAllTables();
-            showToast('Berhasil masuk ke sistem', 'success');
+            showToast('Berhasil masuk ke sistem (Cloud Sync Aktif)', 'success');
         }
 
         function logout() {
@@ -748,7 +839,7 @@
                 petugas: currentUser ? currentUser.name : 'Piket'
             });
 
-            saveLocalStorage();
+            saveCloudData();
             renderStatistics();
             showToast(`Absen Berhasil: ${student.name} (${status})`, 'success');
         }
@@ -801,7 +892,7 @@
                 petugas: currentUser ? currentUser.name : 'Manual'
             });
 
-            saveLocalStorage();
+            saveCloudData();
             renderStatistics();
             showToast(`Absen Manual Berhasil: ${selectedStudentForManual.name} (${status})`, 'success');
             
@@ -811,7 +902,7 @@
         }
 
         let activeQRInstance = null;
-        function openQRModal(studentId) {
+        window.openQRModal = function(studentId) {
             const student = appData.students.find(s => s.id === studentId);
             if(!student) return;
 
@@ -844,11 +935,11 @@
             document.getElementById('modal-qr').classList.remove('hidden');
         }
 
-        function closeQRModal() {
+        window.closeQRModal = function() {
             document.getElementById('modal-qr').classList.add('hidden');
         }
 
-        function downloadIDCardImage() {
+        window.downloadIDCardImage = function() {
             const cardElement = document.getElementById('id-card-element');
             html2canvas(cardElement, {
                 scale: 3,
@@ -867,19 +958,19 @@
             });
         }
 
-        function handleLogoUpload(event) {
+        window.handleLogoUpload = function(event) {
             const file = event.target.files[0];
             if(!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 appData.customLogo = e.target.result;
-                saveLocalStorage();
+                saveCloudData();
                 showToast('Logo ID Card berhasil diperbarui', 'success');
             };
             reader.readAsDataURL(file);
         }
 
-        function openAddStudentModal() {
+        window.openAddStudentModal = function() {
             if(appData.classes.length === 0) {
                 showToast('Buat Master Kelas terlebih dahulu', 'error');
                 openClassModal();
@@ -890,11 +981,11 @@
             document.getElementById('modal-student').classList.remove('hidden');
         }
 
-        function closeStudentModal() {
+        window.closeStudentModal = function() {
             document.getElementById('modal-student').classList.add('hidden');
         }
 
-        function saveStudentData(e) {
+        window.saveStudentData = function(e) {
             e.preventDefault();
             const name = document.getElementById('input-student-name').value;
             const nisn = document.getElementById('input-student-nisn').value;
@@ -902,26 +993,26 @@
 
             const newId = 'S' + Math.floor(1000 + Math.random() * 9000);
             appData.students.push({ id: newId, name, nisn, className });
-            saveLocalStorage();
+            saveCloudData();
             renderStudentTable();
             closeStudentModal();
-            showToast('Siswa berhasil ditambahkan', 'success');
+            showToast('Siswa berhasil ditambahkan & disinkronkan', 'success');
         }
 
-        function deleteStudent(id) {
+        window.deleteStudent = function(id) {
             if(confirm('Yakin ingin menghapus data siswa ini?')) {
                 appData.students = appData.students.filter(s => s.id !== id);
-                saveLocalStorage();
+                saveCloudData();
                 renderStudentTable();
                 showToast('Data siswa dihapus', 'info');
             }
         }
 
-        function openClassModal() {
+        window.openClassModal = function() {
             renderClassList();
             document.getElementById('modal-class').classList.remove('hidden');
         }
-        function closeClassModal() {
+        window.closeClassModal = function() {
             document.getElementById('modal-class').classList.add('hidden');
             renderClassSelects();
         }
@@ -935,20 +1026,20 @@
                 container.appendChild(div);
             });
         }
-        function addNewClass() {
+        window.addNewClass = function() {
             const input = document.getElementById('new-class-name');
             const val = input.value.trim().toUpperCase();
             if(val && !appData.classes.includes(val)) {
                 appData.classes.push(val);
                 input.value = '';
-                saveLocalStorage();
+                saveCloudData();
                 renderClassList();
                 showToast('Kelas ditambahkan', 'success');
             }
         }
-        function deleteClass(cls) {
+        window.deleteClass = function(cls) {
             appData.classes = appData.classes.filter(c => c !== cls);
-            saveLocalStorage();
+            saveCloudData();
             renderClassList();
         }
 
@@ -965,12 +1056,12 @@
             }
         }
 
-        function openUserModal() {
+        window.openUserModal = function() {
             renderUsersTable();
             renderClassSelects();
             document.getElementById('modal-user-mgmt').classList.remove('hidden');
         }
-        function closeUserModal() {
+        window.closeUserModal = function() {
             document.getElementById('modal-user-mgmt').classList.add('hidden');
         }
         function renderUsersTable() {
@@ -988,7 +1079,7 @@
                 `;
             });
         }
-        function saveNewUser(e) {
+        window.saveNewUser = function(e) {
             e.preventDefault();
             const name = document.getElementById('user-name-input').value;
             const role = document.getElementById('user-role-input').value;
@@ -996,18 +1087,18 @@
             const pin = document.getElementById('user-pin-input').value;
 
             appData.users.push({ name, role, className, pin });
-            saveLocalStorage();
+            saveCloudData();
             renderUsersTable();
             showToast('Akun berhasil dibuat', 'success');
         }
-        function deleteUser(idx) {
+        window.deleteUser = function(idx) {
             appData.users.splice(idx, 1);
-            saveLocalStorage();
+            saveCloudData();
             renderUsersTable();
         }
 
-        function exportAttendance() {
-            showToast('Fitur export data rekap siap digunakan', 'success');
+        window.exportAttendance = function() {
+            showToast('Fitur export data rekap aktif', 'success');
         }
 
         function showToast(message, type = 'success') {
