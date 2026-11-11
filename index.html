@@ -527,7 +527,6 @@
 
         function setupCloudSync() {
             if (!db || !userId) return;
-            // FIXED: Ensure even number of segments for Firestore document reference (collection/document/collection/document)
             const docRef = doc(db, 'artifacts_data', appId);
             
             onSnapshot(docRef, (docSnap) => {
@@ -535,15 +534,14 @@
                     const cloudData = docSnap.data();
                     if (cloudData && cloudData.payload) {
                         appData = cloudData.payload;
-                        saveLocalStorage(); // Backup local
+                        saveLocalStorage();
                         if (currentUser) renderAllTables();
                     }
                 } else {
-                    // Initialize document if not exists
                     saveCloudData();
                 }
             }, (error) => {
-                console.warn("Firestore sync permission notice (using local storage fallback):", error.message);
+                console.warn("Firestore sync notice:", error.message);
                 isCloudConnected = false;
                 const badge = document.getElementById('cloud-status-badge');
                 if (badge) {
@@ -557,11 +555,10 @@
             saveLocalStorage();
             if (!db || !userId || !isCloudConnected) return;
             try {
-                // FIXED: Ensure even number of segments matching setupCloudSync
                 const docRef = doc(db, 'artifacts_data', appId);
                 await setDoc(docRef, { payload: appData, updatedAt: new Date().toISOString() });
             } catch (err) {
-                console.warn("Cloud save skipped due to permissions, saved locally.");
+                console.warn("Cloud save skipped, saved locally.");
             }
         }
 
@@ -655,10 +652,10 @@
             }
 
             renderAllTables();
-            showToast('Berhasil masuk ke sistem (Cloud Sync Aktif)', 'success');
+            showToast('Berhasil masuk ke sistem', 'success');
         }
 
-        function logout() {
+        window.logout = function() {
             stopScanner();
             currentUser = null;
             document.getElementById('full-login-screen').classList.remove('hidden');
@@ -666,13 +663,18 @@
             showToast('Anda telah keluar', 'info');
         }
 
-        function switchTab(tabName) {
+        window.switchTab = function(tabName) {
             ['scanner', 'rekap', 'students'].forEach(t => {
-                document.getElementById(`tab-content-${t}`).classList.add('hidden');
-                document.getElementById(`tab-btn-${t}`).className = "pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2 whitespace-nowrap pt-3";
+                const contentEl = document.getElementById(`tab-content-${t}`);
+                const btnEl = document.getElementById(`tab-btn-${t}`);
+                if(contentEl) contentEl.classList.add('hidden');
+                if(btnEl) btnEl.className = "pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2 whitespace-nowrap pt-3";
             });
-            document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
-            document.getElementById(`tab-btn-${tabName}`).className = "pb-3 text-sm font-semibold border-b-2 border-emerald-700 text-emerald-700 flex items-center space-x-2 whitespace-nowrap pt-3";
+            
+            const targetContent = document.getElementById(`tab-content-${tabName}`);
+            const targetBtn = document.getElementById(`tab-btn-${tabName}`);
+            if(targetContent) targetContent.classList.remove('hidden');
+            if(targetBtn) targetBtn.className = "pb-3 text-sm font-semibold border-b-2 border-emerald-700 text-emerald-700 flex items-center space-x-2 whitespace-nowrap pt-3";
 
             if(tabName === 'scanner') renderStatistics();
             else if(tabName === 'rekap') renderRekapTable();
@@ -698,10 +700,15 @@
                 else if(a.status === 'Alpa') alpa++;
             });
 
-            document.getElementById('stat-hadir').innerText = hadir;
-            document.getElementById('stat-terlambat').innerText = terlambat;
-            document.getElementById('stat-sakit').innerText = sakit;
-            document.getElementById('stat-alpa').innerText = alpa;
+            const elHadir = document.getElementById('stat-hadir');
+            const elTerlambat = document.getElementById('stat-terlambat');
+            const elSakit = document.getElementById('stat-sakit');
+            const elAlpa = document.getElementById('stat-alpa');
+
+            if(elHadir) elHadir.innerText = hadir;
+            if(elTerlambat) elTerlambat.innerText = terlambat;
+            if(elSakit) elSakit.innerText = sakit;
+            if(elAlpa) elAlpa.innerText = alpa;
         }
 
         function renderStudentTable() {
@@ -783,8 +790,9 @@
             });
         }
 
-        function startScanner() {
+        window.startScanner = function() {
             const readerEl = document.getElementById('reader');
+            if(!readerEl) return;
             readerEl.innerHTML = '';
             
             if(html5QrCode) {
@@ -803,10 +811,11 @@
             showToast('Kamera scanner diaktifkan', 'info');
         }
 
-        function stopScanner() {
+        window.stopScanner = function() {
             if(html5QrCode) {
                 html5QrCode.stop().then(() => {
-                    document.getElementById('reader').innerHTML = '<span>Kamera dihentikan</span>';
+                    const el = document.getElementById('reader');
+                    if(el) el.innerHTML = '<span>Kamera dihentikan</span>';
                 }).catch(err => {});
             }
         }
@@ -847,6 +856,8 @@
         function handleManualSearch(e) {
             const val = e.target.value.toLowerCase().trim();
             const resBox = document.getElementById('manual-search-results');
+            if(!resBox) return;
+
             if(!val) {
                 resBox.classList.add('hidden');
                 return;
@@ -870,15 +881,21 @@
 
         function selectStudentManual(student) {
             selectedStudentForManual = student;
-            document.getElementById('manual-search-input').value = student.name;
-            document.getElementById('manual-search-results').classList.add('hidden');
+            const searchInput = document.getElementById('manual-search-input');
+            const resBox = document.getElementById('manual-search-results');
+            if(searchInput) searchInput.value = student.name;
+            if(resBox) resBox.classList.add('hidden');
             
-            document.getElementById('sel-student-name').innerText = student.name;
-            document.getElementById('sel-student-nisn').innerText = `NISN: ${student.nisn} | Kelas: ${student.className}`;
-            document.getElementById('selected-student-panel').classList.remove('hidden');
+            const nameEl = document.getElementById('sel-student-name');
+            const nisnEl = document.getElementById('sel-student-nisn');
+            const panelEl = document.getElementById('selected-student-panel');
+
+            if(nameEl) nameEl.innerText = student.name;
+            if(nisnEl) nisnEl.innerText = `NISN: ${student.nisn} | Kelas: ${student.className}`;
+            if(panelEl) panelEl.classList.remove('hidden');
         }
 
-        function markManualAttendance(status) {
+        window.markManualAttendance = function(status) {
             if(!selectedStudentForManual) return;
             const todayStr = new Date().toISOString().slice(0,10);
             const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -896,8 +913,10 @@
             renderStatistics();
             showToast(`Absen Manual Berhasil: ${selectedStudentForManual.name} (${status})`, 'success');
             
-            document.getElementById('selected-student-panel').classList.add('hidden');
-            document.getElementById('manual-search-input').value = '';
+            const panelEl = document.getElementById('selected-student-panel');
+            const searchInput = document.getElementById('manual-search-input');
+            if(panelEl) panelEl.classList.add('hidden');
+            if(searchInput) searchInput.value = '';
             selectedStudentForManual = null;
         }
 
@@ -906,41 +925,51 @@
             const student = appData.students.find(s => s.id === studentId);
             if(!student) return;
 
-            document.getElementById('card-student-name').innerText = student.name;
-            document.getElementById('card-student-nisn').innerText = student.nisn;
-            document.getElementById('card-student-class').innerText = student.className;
+            const nameEl = document.getElementById('card-student-name');
+            const nisnEl = document.getElementById('card-student-nisn');
+            const classEl = document.getElementById('card-student-class');
+            if(nameEl) nameEl.innerText = student.name;
+            if(nisnEl) nisnEl.innerText = student.nisn;
+            if(classEl) classEl.innerText = student.className;
 
             const defaultIcon = document.getElementById('card-default-icon');
             const customLogoImg = document.getElementById('card-custom-logo');
             if(appData.customLogo) {
-                customLogoImg.src = appData.customLogo;
-                customLogoImg.classList.remove('hidden');
-                defaultIcon.classList.add('hidden');
+                if(customLogoImg) {
+                    customLogoImg.src = appData.customLogo;
+                    customLogoImg.classList.remove('hidden');
+                }
+                if(defaultIcon) defaultIcon.classList.add('hidden');
             } else {
-                customLogoImg.classList.add('hidden');
-                defaultIcon.classList.remove('hidden');
+                if(customLogoImg) customLogoImg.classList.add('hidden');
+                if(defaultIcon) defaultIcon.classList.remove('hidden');
             }
 
             const qrBox = document.getElementById('card-qrcode-box');
-            qrBox.innerHTML = '';
-            activeQRInstance = new QRCode(qrBox, {
-                text: student.id,
-                width: 124,
-                height: 124,
-                colorDark: "#047857",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
+            if(qrBox) {
+                qrBox.innerHTML = '';
+                activeQRInstance = new QRCode(qrBox, {
+                    text: student.id,
+                    width: 124,
+                    height: 124,
+                    colorDark: "#047857",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
 
-            document.getElementById('modal-qr').classList.remove('hidden');
+            const modalQr = document.getElementById('modal-qr');
+            if(modalQr) modalQr.classList.remove('hidden');
         }
 
         window.closeQRModal = function() {
-            document.getElementById('modal-qr').classList.add('hidden');
+            const modalQr = document.getElementById('modal-qr');
+            if(modalQr) modalQr.classList.add('hidden');
         }
 
         window.downloadIDCardImage = function() {
             const cardElement = document.getElementById('id-card-element');
+            if(!cardElement) return;
             html2canvas(cardElement, {
                 scale: 3,
                 useCORS: true,
@@ -948,8 +977,10 @@
                 windowWidth: cardElement.scrollWidth,
                 windowHeight: cardElement.scrollHeight
             }).then(canvas => {
+                const nameEl = document.getElementById('card-student-name');
+                const studentName = nameEl ? nameEl.innerText : 'Siswa';
                 const link = document.createElement('a');
-                link.download = `Kartu_Absensi_${document.getElementById('card-student-name').innerText}.png`;
+                link.download = `Kartu_Absensi_${studentName}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
                 showToast('ID Card berhasil diunduh', 'success');
@@ -973,16 +1004,21 @@
         window.openAddStudentModal = function() {
             if(appData.classes.length === 0) {
                 showToast('Buat Master Kelas terlebih dahulu', 'error');
-                openClassModal();
+                window.openClassModal();
                 return;
             }
-            document.getElementById('student-modal-title').innerText = 'Tambah Siswa Baru';
-            document.getElementById('student-form').reset();
-            document.getElementById('modal-student').classList.remove('hidden');
+            const titleEl = document.getElementById('student-modal-title');
+            const formEl = document.getElementById('student-form');
+            const modalEl = document.getElementById('modal-student');
+
+            if(titleEl) titleEl.innerText = 'Tambah Siswa Baru';
+            if(formEl) formEl.reset();
+            if(modalEl) modalEl.classList.remove('hidden');
         }
 
         window.closeStudentModal = function() {
-            document.getElementById('modal-student').classList.add('hidden');
+            const modalEl = document.getElementById('modal-student');
+            if(modalEl) modalEl.classList.add('hidden');
         }
 
         window.saveStudentData = function(e) {
@@ -995,8 +1031,8 @@
             appData.students.push({ id: newId, name, nisn, className });
             saveCloudData();
             renderStudentTable();
-            closeStudentModal();
-            showToast('Siswa berhasil ditambahkan & disinkronkan', 'success');
+            window.closeStudentModal();
+            showToast('Siswa berhasil ditambahkan', 'success');
         }
 
         window.deleteStudent = function(id) {
@@ -1010,14 +1046,19 @@
 
         window.openClassModal = function() {
             renderClassList();
-            document.getElementById('modal-class').classList.remove('hidden');
+            const modalEl = document.getElementById('modal-class');
+            if(modalEl) modalEl.classList.remove('hidden');
         }
+
         window.closeClassModal = function() {
-            document.getElementById('modal-class').classList.add('hidden');
+            const modalEl = document.getElementById('modal-class');
+            if(modalEl) modalEl.classList.add('hidden');
             renderClassSelects();
         }
+
         function renderClassList() {
             const container = document.getElementById('class-list-container');
+            if(!container) return;
             container.innerHTML = '';
             appData.classes.forEach(cls => {
                 const div = document.createElement('div');
@@ -1026,8 +1067,10 @@
                 container.appendChild(div);
             });
         }
+
         window.addNewClass = function() {
             const input = document.getElementById('new-class-name');
+            if(!input) return;
             const val = input.value.trim().toUpperCase();
             if(val && !appData.classes.includes(val)) {
                 appData.classes.push(val);
@@ -1037,6 +1080,7 @@
                 showToast('Kelas ditambahkan', 'success');
             }
         }
+
         window.deleteClass = function(cls) {
             appData.classes = appData.classes.filter(c => c !== cls);
             saveCloudData();
@@ -1059,11 +1103,15 @@
         window.openUserModal = function() {
             renderUsersTable();
             renderClassSelects();
-            document.getElementById('modal-user-mgmt').classList.remove('hidden');
+            const modalEl = document.getElementById('modal-user-mgmt');
+            if(modalEl) modalEl.classList.remove('hidden');
         }
+
         window.closeUserModal = function() {
-            document.getElementById('modal-user-mgmt').classList.add('hidden');
+            const modalEl = document.getElementById('modal-user-mgmt');
+            if(modalEl) modalEl.classList.add('hidden');
         }
+
         function renderUsersTable() {
             const tbody = document.getElementById('users-table-body');
             if(!tbody) return;
@@ -1079,6 +1127,7 @@
                 `;
             });
         }
+
         window.saveNewUser = function(e) {
             e.preventDefault();
             const name = document.getElementById('user-name-input').value;
@@ -1091,6 +1140,7 @@
             renderUsersTable();
             showToast('Akun berhasil dibuat', 'success');
         }
+
         window.deleteUser = function(idx) {
             appData.users.splice(idx, 1);
             saveCloudData();
@@ -1098,13 +1148,14 @@
         }
 
         window.exportAttendance = function() {
-            showToast('Fitur export data rekap aktif', 'success');
+            showToast('Fitur export rekap data siap digunakan', 'success');
         }
 
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const msgEl = document.getElementById('toast-message');
             const iconEl = document.getElementById('toast-icon');
+            if(!toast || !msgEl || !iconEl) return;
 
             msgEl.innerText = message;
             if(type === 'success') {
